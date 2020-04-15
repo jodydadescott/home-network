@@ -1,0 +1,9 @@
+version: '2.2'
+services:
+  cloudflared:
+    image: "jodydadescott/home-cloudflared:latest"
+    container_name: cloudflared
+    restart: always
+    network_mode: host
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"

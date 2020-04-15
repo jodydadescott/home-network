@@ -1,0 +1,12 @@
+version: '2.2'
+services:
+  dynamicdns:
+    image: "jodydadescott/home-dynamicdns"
+    container_name: dynamicdns
+    restart: always
+    network_mode: host
+    environment:
+      KEY: ***KEY***
+      SECRET: ****
+      DOMAIN: "thescottsweb.com"
+      NAME: "x1"

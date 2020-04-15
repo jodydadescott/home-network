@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cd $(dirname $0)
+[ -f lib.dynamicdns ] || {  echo "lib.dynamicdns not found" 1>&2; exit 2; }
+. lib.dynamicdns
+
+get_arecord_ip

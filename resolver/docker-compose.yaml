@@ -1,0 +1,9 @@
+version: '2.2'
+services:
+  resolver:
+    image: "jodydadescott/home-resolver:latest"
+    container_name: resolver
+    restart: always
+    network_mode: host
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"

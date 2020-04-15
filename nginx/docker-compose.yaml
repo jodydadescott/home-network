@@ -1,0 +1,14 @@
+version: '2.2'
+services:
+  nginx:
+    image: "jodydadescott/home-nginx:latest"
+    container_name: nginx
+    restart: always
+    network_mode: host
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/mnt/flash/persist/container_data/nginx/nginx:/etc/nginx"
+      - "/mnt/flash/persist/container_data/nginx/letsencrypt:/etc/letsencrypt"
+    environment:
+      - CONF_FILE=/etc/nginx/nginx.conf
+      - CERTBOT_DOMAINS=x1.thescottsweb.com

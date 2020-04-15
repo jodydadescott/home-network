@@ -1,0 +1,7 @@
+mkdir -p /build
+cd /build
+export GOPATH=$PWD
+mkdir -p cloudflared
+cd cloudflared
+go get github.com/cloudflare/cloudflared/cmd/cloudflared
+cp $GOPATH/bin/cloudflared /mnt/cloudflared.binary

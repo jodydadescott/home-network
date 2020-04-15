@@ -1,0 +1,94 @@
+err() { echo "$@" 1>&2; }
+
+TTL_DEFAULT=600
+
+CONTENT_TYPE="Content-type: application/json"
+
+[[ $TTL ]] || {
+     TTL=$TTL_DEFAULT
+     err "TTL set to $TTL from default"
+}
+
+_curlcheck() {
+  which curl > /dev/null 2>&1 || { err "curl not found in path"; return 2; }
+  return 0
+}
+
+get_known_ip() {
+  _get_known_ip || {
+     err "Get known IP failed"
+    return 3
+  }
+  return 0
+}
+
+_get_known_ip() {
+  _curlcheck || return $?
+  curl --fail -s -L https://ipinfo.io/ip 2>/dev/null || return 3
+  return 0
+}
+
+get_arecord_ip() {
+  _get_arecord_ip || {
+    err "Get A Record IP failed"
+    return 3
+  }
+  return 0
+}
+
+_get_arecord_ip() {
+  _curlcheck || return $?
+  [[ $KEY ]] || { err "Missing required var KEY"; return 2; }
+  [[ $SECRET ]] || { err "Missing required var SECRET"; return 2; }
+  [[ $DOMAIN ]] || { err "Missing required var DOMAIN"; return 2; }
+  [[ $NAME ]] || { err "Missing required var NAME"; return 2; }
+
+  url=https://api.godaddy.com/v1/domains/${DOMAIN}/records/A/${NAME}
+  keysec="Authorization: sso-key ${KEY}:${SECRET}"
+
+  curl --fail -s -L -H "$keysec" -H "$CONTENT_TYPE" $url 2>/dev/null |
+    grep -Eo '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' 2>/dev/null || return 3
+  return 0
+}
+
+update_arecord() {
+  _curlcheck || return $?
+
+  [[ $KEY ]] || { err "Missing required var KEY"; return 2; }
+  [[ $SECRET ]] || { err "Missing required var SECRET"; return 2; }
+  [[ $DOMAIN ]] || { err "Missing required var DOMAIN"; return 2; }
+  [[ $NAME ]] || { err "Missing required var NAME"; return 2; }
+
+  [[ $TTL ]] || { TTL=$TTL_DEFAULT; }
+
+  local url=https://api.godaddy.com/v1/domains/${DOMAIN}/records/A/${NAME}
+  local keysec="Authorization: sso-key ${KEY}:${SECRET}"
+
+  local ip=$(_get_known_ip)
+  [[ $ip ]] || return 3
+
+  local arecord_ip=$(_get_arecord_ip)
+  [[ $arecord_ip ]] || {
+    err "A record does not exist; creating A record ${NAME}.${DOMAIN} with ip $ip"
+    curl --fail -s -L -X PUT -H "$keysec" -H "$CONTENT_TYPE" $url -d "[{\"data\":\"${ip}\",\"ttl\":${TTL}}]" || {
+      err "Creation failed"
+      return 3
+    }
+    err "Creation succesfull"
+    return 0
+  }
+
+  [[ "$ip" == "$arecord_ip" ]] && {
+    err "IP for A Record ${NAME}.${DOMAIN} is $ip which matches known ip; nothing to do"
+    return 0
+  }
+
+  err "IP for A Record ${NAME}.${DOMAIN} is $arecord_ip which does not match known ip $ip"
+  curl --fail -s -L -X PUT -H "$keysec" -H "$CONTENT_TYPE" $url -d "[{\"data\":\"${ip}\",\"ttl\":${TTL}}]" || {
+    err "Update failed"
+    return 3
+  }
+  err "Update succesfull"
+  return 0
+}
+
