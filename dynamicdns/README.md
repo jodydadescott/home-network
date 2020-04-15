@@ -1,5 +1,25 @@
-# alpine-godaddy-dynamicdns
-Update Godaddy DNS Domain A record with home IP address.
+# dynamicdns
+Resolves my external IP and updates my personal domain at GoDaddy.
+## Example Deployment
+```
+cat <<EOF > dynamicdns.yaml
+  dynamicdns:
+    image: "jodydadescott/home-dynamicdns:latest"
+    container_name: dynamicdns
+    restart: always
+    network_mode: host
+    environment:
+      KEY: "****"
+      SECRET: "***"
+      DOMAIN: "example.com"
+      NAME: "dev"
+```
+
+edit file as necessary
+
+```
+docker-compose up -d
+```
 ## Required ENV variables
 - KEY: GoDaddy KEY
 - SECRET: GoDaddy Secret
@@ -10,14 +30,3 @@ Update Godaddy DNS Domain A record with home IP address.
 - TTL: DNS TTL in seconds; Default 600
 ## Setup
 - Create Godaddy key @ https://developer.godaddy.com/keys
-```
-docker run \
-  --name dynamicdns -d \
-  --restart=unless-stopped \
-  --network host \
-  -e KEY="*********" \
-  -e SECRET="*********" \
-  -e DOMAIN="example.com" \
-  -e NAME="home" \
-  $image
-```

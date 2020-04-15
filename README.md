@@ -21,58 +21,9 @@ This container automatically obtains a Lets Encrypt Certificate for my personal 
 ### etc
 I also make use of a few prebuilt containers such as jacobalberty/unifi and openhab/openhab
 
-### Docker configuration
 ```
 version: '2.2'
 services:
-  cloudflared:
-    image: "jodydadescott/home-cloudflared:latest"
-    container_name: cloudflared
-    restart: always
-    network_mode: host
-    volumes:
-      - "/etc/localtime:/etc/localtime:ro"
-    environment:
-      - CLOUDFLARED_PORT=4053
-  resolver:
-    image: "jodydadescott/home-resolver:latest"
-    container_name: resolver
-    restart: always
-    network_mode: host
-    volumes:
-      - "/etc/localtime:/etc/localtime:ro"
-  asterisk:
-    image: "jodydadescott/home-asterisk:latest"
-    container_name: asterisk
-    restart: always
-    network_mode: host
-    volumes:
-      - "/etc/localtime:/etc/localtime:ro"
-      - "/mnt/flash/persist/container_data/asterisk/conf:/etc/asterisk"
-      - "/mnt/flash/persist/container_data/asterisk/db:/var/log/asterisk"
-      - "/mnt/flash/persist/container_data/letsencrypt:/etc/letsencrypt:ro"
-  dynamicdns:
-    image: "jodydadescott/home-dynamicdns:latest"
-    container_name: dynamicdns
-    restart: always
-    network_mode: host
-    environment:
-      KEY: "36Jvemj7ha_Vspq1azx5FLcWexro41aMv"
-      SECRET: "9wAnDAxGVykF9j6sdmSTbw"
-      DOMAIN: "thescottsweb.com"
-      NAME: "x1"
-  nginx:
-    image: "jodydadescott/home-nginx:latest"
-    container_name: nginx
-    restart: always
-    network_mode: host
-    volumes:
-      - "/etc/localtime:/etc/localtime:ro"
-      - "/mnt/flash/persist/container_data/nginx:/etc/nginx:ro"
-      - "/mnt/flash/persist/container_data/letsencrypt:/etc/letsencrypt:rw"
-    environment:
-      - CONF_FILE=/etc/nginx/nginx.conf
-      - CERTBOT_DOMAINS=x1.thescottsweb.com
   openhab:
     image: "openhab/openhab:2.4.0"
     container_name: openhab
