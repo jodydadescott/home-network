@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import time
+import pprint
+import logging
+
+from pyadtpulse import PyADTPulse
+
+def setup_logger():
+    log_level = logging.DEBUG
+
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
+
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+def main():
+    username = os.getenv('ADTPULSE_USER', None)
+    password = os.getenv('ADTPULSE_PASSWORD', None)
+
+    if (username == None) or (password == None):
+        print("ERROR! Must define env variables ADTPULSE_USER and ADTPULSE_PASSWORD")
+        raise SystemExit
+
+    # setup_logger()
+
+    adt = PyADTPulse(username, password)
+
+    for site in adt.sites:
+        site.arm_away()
+
+    adt.logout
+
+if __name__ == "__main__":
+    main()
