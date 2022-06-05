@@ -1,21 +1,26 @@
 #!/bin/bash
 
-main()
-{
-[[ $CLOUDFLARED_PORT ]] || {
-  err "Missing required environment variable CLOUDFLARED_PORT"
-  return 2
-}
-cat <<EOF > /etc/cloudflared.conf || { err "Failed to write conf file"; return 2; }
-proxy-dns: true
-proxy-dns-port: $CLOUDFLARED_PORT
-proxy-dns-upstream:
- - https://1.1.1.1/dns-query
- - https://1.0.0.1/dns-query
-EOF
-exec /usr/sbin/cloudflared --no-autoupdate --config /etc/cloudflared.conf
+function main() {
+
+  # shellcheck disable=SC2015
+  [[ "$CLOUDFLARED_PORT" ]] && {
+    err "CLOUDFLARED_PORT is set to $CLOUDFLARED_PORT (env)"
+  } || {
+    CLOUDFLARED_PORT=4053
+    err "CLOUDFLARED_PORT set to $CLOUDFLARED_PORT (default)"
+  }
+
+  err "CLOUDFLARED_PORT is $CLOUDFLARED_PORT"
+
+  [[ $CLOUDFLARED_PORT ]] || {
+    err "Missing required environment variable CLOUDFLARED_PORT"
+    return 2
+  }
+
+  sed "s/proxy-dns-port: \$CLOUDFLARED_PORT/proxy-dns-port: $CLOUDFLARED_PORT/g" /etc/cloudflared.in > /etc/cloudflared.conf
+  exec /usr/local/sbin/cloudflared --no-autoupdate --config /etc/cloudflared.conf
 }
 
 err() { echo "$@" 1>&2; }
 
-main $@
+main "$@"

@@ -1,17 +1,19 @@
-FROM alpine:latest
+FROM fedora:latest
 WORKDIR /
-MAINTAINER jodyscott
+LABEL author=jodyscott
 
-RUN apk update
+ARG CLOUDFLARED_URI="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
 
-# Generic
-RUN apk add bash curl bind-tools
+RUN dnf -y update
 
-# Specific
-# RUN apk add
+# Base
+RUN dnf install -y iproute iputils bind-utils file hostname procps net-tools dnf-plugins-core tcpdump findutils
 
-ADD cloudflared.binary /usr/sbin/cloudflared
-RUN chmod 755 /usr/sbin/cloudflared
+RUN curl -L -o /usr/local/sbin/cloudflared $CLOUDFLARED_URI
+RUN chmod +x /usr/local/sbin/cloudflared
+
+ADD cloudflared.conf /etc/cloudflared.in
+RUN chmod 644 /etc/cloudflared.in
 
 ADD entrypoint.sh /
 RUN chmod 755 /entrypoint.sh
