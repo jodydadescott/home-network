@@ -1,0 +1,67 @@
+#!/bin/bash
+# shellcheck disable=SC2039,SC2015
+
+CONFIG_DIR_DEFAULT="/config"
+
+function main() {
+
+  script="$(basename "$0")"
+
+  case "$1" in
+    0) true ;;
+    1) true ;;
+    *) err "Usage: $script (0 | 1) (start | stop | restart)"; return 2; ;;
+  esac
+
+  case "$2" in
+    start) true ;;
+    stop) true ;;
+    restart) true ;;
+    *) err "Usage: $script (0 | 1) (start | stop | restart)"; return 2; ;;
+  esac
+
+  # shellcheck disable=SC2015
+  [[ "$CONFIG_DIR" ]] && {
+    err "CONFIG_DIR is set to $CONFIG_DIR (env)"
+  } || {
+    CONFIG_DIR="$CONFIG_DIR_DEFAULT"
+    err "CONFIG_DIR set to $CONFIG_DIR (default)"
+  }
+
+  [ -d "$CONFIG_DIR" ] || { err "Directory $CONFIG_DIR does not exist"; return 2; }
+  [ -d "${CONFIG_DIR}/bootstrap" ] || { err "Directory ${CONFIG_DIR}/bootstrap does not exist"; return 2; }
+
+  local bootstrap_dir
+  bootstrap_dir="${CONFIG_DIR}/bootstrap/${1}"
+  [ -d "$bootstrap_dir" ] || { mkdir -p "$bootstrap_dir" || { err "Failed to create directory $bootstrap_dir"; return 3; }; }
+
+  local fail=0
+  local total=0
+  local pass=0
+  local skip=0
+
+  for script in "${bootstrap_dir}"/* ; do
+    [ -d "$script" ] && continue
+    # shellcheck disable=SC2015
+    [ -x "$script" ] && {
+      err "Running script $script"
+      ((total=total+1))
+      $script "$2" && ((pass=pass+1)) || ((fail=fail+1))
+    } || {
+      err "File $script exist but is not executable"
+      ((skip=skip+1))
+    }
+  done
+
+  err "Total: $total"
+  err "Pass: $pass"
+  err "Fail: $fail"
+  err "Skip: $skip"
+
+  [[ "$fail" -eq 0 ]] || return 3
+  return 0
+}
+
+function err() { echo "$@" 1>&2; }
+
+main "$@"

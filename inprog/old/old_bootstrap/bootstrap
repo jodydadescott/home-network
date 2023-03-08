@@ -1,0 +1,47 @@
+#!/bin/bash
+# shellcheck disable=SC2039
+
+CONFIG_DEFAULT="/config"
+
+function main() {
+  # shellcheck disable=SC2015
+  [[ "$CONFIG" ]] && {
+    err "CONFIG is set to $CONFIG (env)"
+  } || {
+    CONFIG="$CONFIG_DEFAULT"
+    err "CONFIG set to $CONFIG (default)"
+  }
+
+  [ -d "$CONFIG" ] || { err "Directory $CONFIG does not exist"; return 2; }
+  initd_dir="${CONFIG}/init.d"
+  [ -d "$initd_dir" ] || { err "Directory $initd_dir does not exist"; return 2; }
+
+  fail=0
+  total=0
+  pass=0
+  skip=0
+  for script in "${initd_dir}"/* ; do
+    [ -d "$script" ] && continue
+    # shellcheck disable=SC2015
+    [ -x "$script" ] && {
+      err "Running script $script"
+      ((total=total+1))
+      $script "$@" && ((pass=pass+1)) || ((fail=fail+1))
+    } || {
+      err "File $script exist but is not executable"
+      ((skip=skip+1))
+    }
+  done
+
+  err "Total: $total"
+  err "Pass: $pass"
+  err "Fail: $fail"
+  err "Skip: $skip"
+
+  [[ "$fail" -eq 0 ]] || return 3
+  return 0
+}
+
+function err() { echo "$@" 1>&2; }
+
+main "$@"

@@ -1,0 +1,155 @@
+#!/bin/bash
+# shellcheck disable=SC2015
+
+set -e
+
+function main() {
+  [ -d "/config" ] || {
+    mkdir -p "/config" || {
+      err "failed to create directory /config"
+      return 2
+    }
+  }
+
+  local failed
+  failed=0
+  
+  [ -d "/config/dhcpd" ] && {
+    err "directory /config/dhcpd already exist; nothing to do"
+  } || {
+    make_dhcpd_conf || ((failed=failed+1))
+  }
+
+  [ -d "/config/rndc" ] && {
+    err "directory /config/rndc already exist; nothing to do"
+  } || {
+    make_rndc_conf || ((failed=failed+1))
+  }
+
+  [[ "$failed" -gt 0 ]] && return 2
+  return 0
+}
+
+function make_dhcpd_conf() {
+  _make_dhcpd_conf || {
+    err "dhcpd conf creation failed"
+    return 2
+  }
+  err "dhcpd conf created successfully"
+  return 0
+}
+
+function _make_dhcpd_conf() {
+  mkdir -p "/config/dhcpd" || return 2
+  echo_init_service > /config/dhcpd/init_service || return 2
+  echo_git_ignore  > /config/dhcpd/.gitignore || return 2
+  echo_dhcpd_conf > /config/dhcpd/dhcpd.conf || return 2
+}
+
+function echo_init_service()
+{
+cat <<EOF
+
+function pre_init_service() {
+  touch /config/dhcpd/dhcpd.leases
+}
+
+function init_service() {
+  exec /usr/sbin/dhcpd -d -4 -cf /config/dhcpd/dhcpd.conf -lf /config/dhcpd/dhcpd.leases
+}
+EOF
+}
+
+function echo_git_ignore()
+{
+cat <<EOF
+*.leases
+EOF
+}
+
+function echo_dhcpd_conf()
+{
+cat <<EOF
+ddns-updates on;
+ddns-update-style interim;
+update-static-leases on;
+authoritative;
+allow unknown-clients;
+use-host-decl-names on;
+default-lease-time 1814400; #21 days
+max-lease-time 1814400; #21 days
+log-facility local7;
+
+include "/config/rndc/rndc.key";
+
+subnet 192.168.1.0 netmask 255.255.255.0 {
+   range 192.168.1.100 192.168.1.254;
+   option routers 192.168.1.1;
+   option domain-name-servers 192.168.1.1;
+   option domain-name "local";
+   ddns-domainname "local.";
+   ddns-rev-domainname "in-addr.arpa.";
+}
+
+zone local. {
+   primary localhost;
+   key rndc-key;
+}
+
+zone 1.168.192.in-addr.arpa. {
+   primary localhost;
+   key rndc-key;
+}
+EOF
+}
+
+function make_rndc_conf() {
+  _make_rndc_conf || {
+    err "rndc conf creation failed"
+    return 2
+  }
+  err "rndc conf created successfully"
+  return 0
+}
+
+function _make_rndc_conf() {
+  mkdir -p "/config/rndc" || return 2
+
+  local key
+  key=$(rndc-confgen  | grep -m 1 secret | awk '{print $2}')
+  key="${key::-1}"
+  [[ "$key" ]] || return 2
+  echo_rndc_conf "$key" > "/config/rndc/rndc.conf" || return 2
+  echo_rndc_key "$key" > "/config/rndc/rndc.key" || return 2
+  return 0
+}
+
+function echo_rndc_conf()
+{
+cat <<EOF
+key "rndc-key" {
+	algorithm hmac-sha256;
+	secret "$1";
+};
+
+options {
+	default-key "rndc-key";
+	default-server 192.168.1.1;
+	default-port 953;
+};
+EOF
+}
+
+function echo_rndc_key()
+{
+cat <<EOF
+key "rndc-key" {
+	algorithm hmac-sha256;
+	secret "$1";
+};
+EOF
+}
+
+function err() { echo "$@" >&2; }
+
+main "$@"

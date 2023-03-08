@@ -1,12 +1,15 @@
 BUILD_NUMBER := latest
-SERVICE_NAME := asterisk
-PROJECT_NAME := home-$(SERVICE_NAME)
+PROJECT_NAME := wwan
 DOCKER_REGISTRY := jodydadescott
 DOCKER_IMAGE_NAME?=$(PROJECT_NAME)
 DOCKER_IMAGE_TAG?=$(BUILD_NUMBER)
 
 build:
+	cd udhcpc && $(MAKE)
 	docker build -t $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) .
-	
+
+shell:
+	docker run -it $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) sh
+
 push:
 	docker push $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo "Running $(basename "$0") returing fail"
+exit 3

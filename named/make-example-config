@@ -1,0 +1,134 @@
+#!/bin/bash
+# shellcheck disable=SC2015
+
+function main() {
+
+  usage="$0 hostname ip ($0 x1 2)"
+  hostname="$1"
+  ip="$2"
+  [[ "$ip" ]] || { err "$usage"; return 2; }
+  [[ "$hostname" ]] || { err "$usage"; return 2; }
+
+  [ -f /etc/named/named.conf ] && { err "File /etc/named/named.conf already exist"; return 3; }
+
+  mkdir -p /etc/named
+  echo_named_conf > /etc/named/named.conf
+  echo_forward_zone > /etc/named/local.forward
+  echo_reverse_zone > /etc/named/local.reverse
+  key=$(rndc-confgen  | grep -m 1 secret | awk '{print $2}')
+  key="${key::-1}"
+  [[ "$key" ]] || return 2
+  echo_rndc_conf "$key" > "/etc/named/rndc.conf" || return 2
+  echo_rndc_key "$key" > "/etc/named/rndc.key" || return 2
+  return 0
+}
+
+function echo_named_conf()
+{
+cat <<EOF
+options {
+	listen-on port 53 { any; };
+	listen-on-v6 port 53 { ::1; };
+	directory "/etc/named";
+	allow-query { any; };
+	recursion yes;
+	allow-recursion { any; };
+	allow-recursion-on { any; };
+
+  include "/etc/named/rndc.key";
+  include "/etc/named/rndc.conf";
+
+  forward only;
+  forwarders { 127.0.0.1 port 4053; };
+};
+
+zone "." IN {
+	type hint;
+	file "/etc/named.ca";
+};
+
+zone "local" {
+	type master;
+	file "local.forward";
+	allow-update { key rndc-key; };
+};
+
+zone "168.192.in-addr.arpa." {
+	type master;
+	file "local.reverse";
+	allow-update { key rndc-key; };
+};
+
+EOF
+}
+
+function echo_forward_zone()
+{
+cat <<EOF
+\$TTL    604800
+@       IN      SOA     $hostname.local. admin.local. (
+                  3     ; Serial
+             604800     ; Refresh
+              86400     ; Retry
+            2419200     ; Expire
+             604800 )   ; Negative Cache TTL
+;
+          IN  NS  $hostname.local.
+$hostname	IN  A   192.168.1.$IP
+EOF
+}
+
+function echo_reverse_zone()
+{
+cat <<EOF
+\$TTL    604800
+@       IN      SOA     $hostname.local. admin.local. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+        IN      NS      $hostname.local.
+1     	IN      PTR     $hostname.local.
+EOF
+}
+
+function make_rndc_conf() {
+  _make_rndc_conf || {
+    err "rndc conf creation failed"
+    return 2
+  }
+  err "rndc conf created successfully"
+  return 0
+}
+
+function echo_rndc_conf()
+{
+cat <<EOF
+key "rndc-key" {
+	algorithm hmac-sha256;
+	secret "$1";
+};
+
+options {
+	default-key "rndc-key";
+	default-server 192.168.1.$IP;
+	default-port 953;
+};
+EOF
+}
+
+function echo_rndc_key()
+{
+cat <<EOF
+key "rndc-key" {
+	algorithm hmac-sha256;
+	secret "$1";
+};
+EOF
+}
+
+function err() { echo "$@" >&2; }
+
+main "$@"

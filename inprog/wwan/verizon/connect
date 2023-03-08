@@ -1,0 +1,55 @@
+#!/bin/bash -e
+
+function main() {
+  run || { err "Fail"; return 3; }
+  err "Connected"
+  return 0
+}
+
+function run() {
+  set_waninf || { err "WAN Interface not set"; return 3; }
+  setup_routes || return 3
+  setup_forwarding || return 3
+  connect || { err "Connect failed"; return 3; }
+  return 0
+}
+
+function connect() {
+  ip link set "$WAN_INF" down
+  echo 'Y' > "/sys/class/net/${WAN_INF}/qmi/raw_ip"
+  ip link set "$WAN_INF" up
+  qmicli -p -d /dev/cdc-wdm0 --device-open-net='net-raw-ip|net-no-qos-header' --wds-start-network="apn=VZWINTERNET,ip-type=4" --client-no-release-cid
+  udhcpc -q -f -i "$WAN_INF"
+  err "Connected"
+}
+
+function set_waninf() {
+  [[ "$WAN_INF" ]] && {
+    err "Using WAN interface $WAN_INF set from env"
+    return 0
+  }
+  
+  for i in /sys/class/net/*; do
+    inf=$(basename "$i")
+    [[ "$inf" == "wwp"* ]] && { WAN_INF="$inf"; err "Using WAN interface $WAN_INF (automatically found)"; return 0; }
+  done
+  err "WAN Interface NOT found"
+  return 3
+}
+
+function setup_routes() {
+  while [[ -n $(ip route show default dev eth0) ]]; do
+    ip route delete default dev eth0
+  done
+  ip route add 192.168.0.0/16 via 172.17.0.1
+}
+
+function setup_forwarding() {
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  iptables --table nat --append POSTROUTING --out-interface "$WAN_INF" -j MASQUERADE
+  iptables --append FORWARD --in-interface eth0 -j ACCEPT
+}
+
+function err() { echo "$@" 1>&2; }
+
+main "$@"

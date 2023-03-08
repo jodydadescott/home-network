@@ -1,0 +1,43 @@
+#!/bin/bash -e
+
+CONFIG_DIR="/config"
+TOOLS_DIR="/tools"
+IMAGE="docker.io/jodydadescott/bootstrap:latest"
+NAME=bootstrap
+
+function main() {
+  _main || { err "Failed"; return $?; }
+  err "Done"
+  return 0
+}
+
+function _main() {
+
+  docker pull "$IMAGE"
+  docker stop "$NAME" > /dev/null 2>&1
+  docker rm "$NAME" > /dev/null 2>&1
+
+  args=""
+  args+=" --restart always "
+  args+=" --detach "
+  args+=" --privileged "
+  args+=" --pid=host "
+  args+=" --network host "
+
+  args+=" --name $NAME "
+  args+=" -e HOSTNAME=$NAME "
+  args+=" -e MODE=run "
+  args+=" --volume ${CONFIG_DIR}:/config:rw "
+  args+=" --volume ${TOOLS_DIR}:/tools:rw "
+
+  args+=" --volume /var/run/docker:/var/run/docker:ro "
+  args+=" --volume /var/run/docker.sock:/var/run/docker.sock:rw "
+  args+=" --volume /var/run/docker.pid:/var/run/docker.pid:ro "
+
+  # shellcheck disable=SC2086
+  docker run $args "$IMAGE"
+}
+
+function err() { echo "$@" 1>&2; }
+
+main "$@"

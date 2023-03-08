@@ -1,23 +1,19 @@
-FROM alpine:latest
+FROM fedora:latest
 WORKDIR /
-MAINTAINER jodyscott
+LABEL author=jodyscott
 
-RUN apk update
+RUN dnf -y update
 
-# Generic
-RUN apk add bash curl bind-tools
+# Base
+RUN dnf install -y iproute iputils bind-utils file hostname procps iptables net-tools dnf-plugins-core tcpdump findutils which 
 
-RUN mkdir -p /dynamicdns
+RUN dnf clean all
 
-ADD dynamicdns_daemon /dynamicdns/
-ADD get_arecord_ip /dynamicdns/
-ADD get_known_ip /dynamicdns/
-ADD update_arecord /dynamicdns/
+RUN mkdir -p /usr/share/ddu
+ADD docker-compose.yaml.example /usr/share/ddu/docker-compose.yaml.example
+RUN chmod 644 /usr/share/ddu/docker-compose.yaml.example
 
-RUN chmod 755 /dynamicdns/dynamicdns_daemon /dynamicdns/get_arecord_ip
-RUN chmod 755 /dynamicdns/get_known_ip /dynamicdns/update_arecord
+ADD ddu /usr/local/sbin/ddu
+RUN chmod +x /usr/local/sbin/ddu
 
-ADD lib.dynamicdns /dynamicdns/
-RUN chmod 644 /dynamicdns/lib.dynamicdns
-
-CMD ["/dynamicdns/dynamicdns_daemon"]
+CMD ["/usr/local/sbin/ddu"]

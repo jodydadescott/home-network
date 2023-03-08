@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+exec /usr/share/udhcpc/default."$1"

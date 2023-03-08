@@ -1,0 +1,120 @@
+#!/bin/bash
+# shellcheck disable=SC2015,SC1090
+
+TTL_DEFAULT=600
+UPDATE_INTERVAL_DEFAULT=3600
+CONTENT_TYPE="Content-type: application/json"
+
+run=true
+
+function main() {
+
+  [[ $TTL ]] && {
+    err "TTL set to $TTL (user)"
+  } || {
+    TTL=$TTL_DEFAULT
+    err "TTL set to $TTL (default)"
+  }
+
+  [[ $UPDATE_INTERVAL ]] && {
+    err "UPDATE_INTERVAL set to $UPDATE_INTERVAL (config)"
+  } || {
+    UPDATE_INTERVAL=$UPDATE_INTERVAL_DEFAULT
+    err "UPDATE_INTERVAL set to $UPDATE_INTERVAL (default)"
+  }
+
+  [[ $KEY ]] || { err "Missing required var KEY"; return 2; }
+  [[ $SECRET ]] || { err "Missing required var SECRET"; return 2; }
+  [[ $DOMAIN ]] || { err "Missing required var DOMAIN"; return 2; }
+  [[ $NAME ]] || { err "Missing required var NAME"; return 2; }
+
+  trap sigterm SIGTERM
+  trap sigint SIGINT
+  trap sighup SIGHUP
+
+  while $run; do
+    update ||:
+    sleep_for $UPDATE_INTERVAL
+  done
+
+  err "Goodbye"
+}
+
+function update() {
+
+  err "Running update"
+
+  local url=https://api.godaddy.com/v1/domains/${DOMAIN}/records/A/${NAME}
+  local keysec="Authorization: sso-key ${KEY}:${SECRET}"
+
+  local ip
+  ip=$(get_known_ip)
+  [[ $ip ]] || { err "Failed to get my ip"; return 3; }
+
+  local arecord_ip
+  arecord_ip=$(get_arecord_ip)
+
+  [[ $arecord_ip ]] || {
+    err "A record does not exist; creating A record ${NAME}.${DOMAIN} with ip $ip"
+    curl --fail -s -L -X PUT -H "$keysec" -H "$CONTENT_TYPE" "$url" -d "[{\"data\":\"${ip}\",\"ttl\":${TTL}}]" || {
+      err "Creation failed"
+      return 3
+    }
+    err "Creation succesfull"
+    return 0
+  }
+
+  [[ "$ip" == "$arecord_ip" ]] && {
+    err "IP for A Record ${NAME}.${DOMAIN} is $ip which matches known ip; nothing to do"
+    return 0
+  }
+
+  err "IP for A Record ${NAME}.${DOMAIN} is $arecord_ip which does not match known ip $ip; updating"
+  curl --fail -s -L -X PUT -H "$keysec" -H "$CONTENT_TYPE" "$url" -d "[{\"data\":\"${ip}\",\"ttl\":${TTL}}]" || {
+    err "Update failed"
+    return 3
+  }
+  err "Update succesfull"
+  return 0
+}
+
+get_known_ip() {
+  curl --fail -s -L https://ipinfo.io/ip 2>/dev/null || return 3
+  return 0
+}
+
+function get_arecord_ip() {
+  [[ $KEY ]] || { err "Missing required var KEY"; return 2; }
+  [[ $SECRET ]] || { err "Missing required var SECRET"; return 2; }
+  [[ $DOMAIN ]] || { err "Missing required var DOMAIN"; return 2; }
+  [[ $NAME ]] || { err "Missing required var NAME"; return 2; }
+
+  url=https://api.godaddy.com/v1/domains/${DOMAIN}/records/A/${NAME}
+  keysec="Authorization: sso-key ${KEY}:${SECRET}"
+
+  curl --fail -s -L -H "$keysec" -H "$CONTENT_TYPE" "$url" 2>/dev/null |
+    grep -Eo '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' 2>/dev/null || return 3
+  return 0
+}
+
+
+function sleep_for() {
+  local t=$1
+  [ "$t" -eq "$t" ] || { err "$t is must be a positive integer"; return 2; }
+  [ "$t" -gt 0 ] || { err "$t is an integer but must be positived"; return 2; }
+  err "Sleeping for $t second(s)"
+  local c=0
+  while $run; do
+    ((c=c+1))
+    [ "$c" -gt "$t" ] && return 0
+    sleep 1
+  done
+}
+
+function sigterm() { err "Caught SIGTERM"; run=false; }
+function sigint() { err "Caught SIGINT"; run=false; }
+function sighup() { err "Caught SIGHUP"; }
+
+function err() { echo "$@" 1>&2; }
+
+main "$@"

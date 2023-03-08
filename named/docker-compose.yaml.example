@@ -1,0 +1,11 @@
+version: '2.2'
+services:
+  named:
+    image: "jodydadescott/home-named:latest"
+    container_name: named
+    restart: always
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/persist/config/containers/named:/etc/named:rw"
+    environment:
+      DELAY: 1

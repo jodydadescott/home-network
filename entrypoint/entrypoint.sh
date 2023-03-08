@@ -1,14 +1,32 @@
 #!/bin/bash
-# shellcheck disable=SC1091,SC1090
+# shellcheck disable=SC1091,SC1090,SC2015
+
+WAIT_FOR_FILE="/etc/cloudflared.conf"
+WAIT_RETRY_INT_DEFAULT=30
+WAIT_RETRY_MAX_DEFAULT=600
 
 run=true
 
 function main() {
-
-  SERVICE_NAME=$(</.service_name)
-  [[ "$SERVICE_NAME" ]] || return 2
-
   [[ "$HOSTNAME" ]] && { hostname "$HOSTNAME" ||:; }
+
+  wait_retry_int=$WAIT_RETRY_INT_DEFAULT
+
+  [[ "$WAIT_RETRY_INT" ]] && {
+    wait_retry_int=$WAIT_RETRY_INT
+    err "wait_retry_int=$wait_retry_int (user)"
+  } || {
+    err "wait_retry_int=$wait_retry_int (user)"
+  }
+
+  [[ "$CONF_RETRY_MAX" ]] && {
+    err "CONF_RETRY_MAX=$CONF_RETRY_MAX (user)"
+  } || {
+    CONF_RETRY_MAX=$CONF_RETRY_MAX_DEFAULT
+    err "CONF_RETRY_MAX=$CONF_RETRY_MAX (default)"
+  }
+
+  [[ "$CONF_FILE" ]] || { err "CONF_FILE is not set"; return 2; }
 
   wait_for_conf || return $?
 
@@ -22,6 +40,8 @@ function main() {
 }
 
 function wait_for_conf() {
+
+  local c=0
 
   is_ready && {
     err "ready on first try"
@@ -39,6 +59,7 @@ function wait_for_conf() {
       err "config is now ready"
       return 0
     }
+    ((c=c+1))
     err "config is still not ready"
     sleep_for 10
   done
@@ -47,10 +68,7 @@ function wait_for_conf() {
 }
 
 function is_ready() {
-  [ -d "/config" ] || { err "Directory $CONFIG_DIR does not exist"; return 2; }
-  [ -d "/config/${SERVICE_NAME}" ] || { err "Directory /config/${SERVICE_NAME} does not exist"; return 2; }
-  [ -f "/config/${SERVICE_NAME}/init_service" ] || { err "File /config/${SERVICE_NAME}/init_service does not exist"; return 2; }
-  err "Config is ready"
+  [ -f $CONF_FILE ] || return 2
   return 0
 }
 

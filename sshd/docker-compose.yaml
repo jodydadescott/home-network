@@ -1,0 +1,6 @@
+version: '2.2'
+services:
+  sshd:
+    image: "jodydadescott/home-sshd:latest"
+    container_name: sshd
+    restart: always

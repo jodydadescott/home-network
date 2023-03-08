@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# shellcheck disable=SC1091
+source /libcommon || { echo "Failed to source /libcommon" 1>&2; exit 2; }
+bootstrap "$@"

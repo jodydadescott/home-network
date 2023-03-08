@@ -1,0 +1,6 @@
+
+export CONF_FILE="/etc/cloudflared.conf"
+export CONF_RETRY_INT_SECONDS=30
+export CONF_RETRY_MAX=600
+
+export CMD=/usr/local/sbin/cloudflared --no-autoupdate --config /etc/cloudflared.conf

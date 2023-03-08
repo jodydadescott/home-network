@@ -1,0 +1,28 @@
+#!/bin/bash -e
+# shellcheck disable=SC2154
+
+# RESOLV_CONF=/etc/resolv.conf
+
+[[ -n "$interface" ]] && {
+  /usr/sbin/ip addr flush dev "$interface"
+  /usr/sbin/ip route flush table main dev "$interface"
+}
+
+cmd="ip addr add $ip"
+[ -n "$subnet" ] && cmd+="/$subnet "
+[ -n "$broadcast" ] && cmd+=" broadcast $broadcast"
+cmd+=" dev $interface"
+$cmd
+
+if [ -n "$router" ]
+then
+	for i in $router; do
+    /usr/sbin/ip route add default via "$i"
+	done
+fi
+
+# cat /dev/null > "$RESOLV_CONF"
+# [ -n "$domain" ] && echo search "$domain" >> "$RESOLV_CONF"
+# for i in $dns; do
+#	echo nameserver "$i" >> "$RESOLV_CONF"
+# done

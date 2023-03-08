@@ -1,0 +1,98 @@
+--- a/dhclient-script.bash
++++ b/dhclient-script.bash
+@@ -45,20 +45,20 @@
+     script="${1}"
+ 
+     if [ -f "${script}" ]; then
+-        . ${script}
++        . "${script}"
+     fi
+ 
+     if [ -n "${exit_status}" ] && [ "${exit_status}" -ne 0 ]; then
+         err "${script} returned non-zero exit status ${exit_status}"
+     fi
+ 
+-    return ${exit_status}
++    return "${exit_status}"
+ }
+ 
+ exit_with_hooks() {
+     # Source the documented exit-hook script, if it exists
+     run_hook "${ETCDIR}/dhclient-exit-hooks" || exit $?
+-    exit ${1}
++    exit "${1}"
+ }
+ 
+ quad2num() {
+@@ -73,7 +73,7 @@
+ }
+ 
+ ip2num() {
+-    IFS='.' quad2num ${1}
++    IFS='.' quad2num "${1}"
+ }
+ 
+ num2ip() {
+@@ -121,7 +121,7 @@
+              break
+         fi
+     done
+-    echo $bits
++    echo "$bits"
+ }
+ 
+ is_router_reachable() {
+@@ -244,7 +244,7 @@
+                         IFS="." target_arr=(${target})
+                         unset IFS
+                         ((pads=4-${#target_arr[@]}))
+-                        for j in $(seq $pads); do
++                        for j in $(seq "$pads"); do
+                             target="${target}.0"
+                         done
+ 
+@@ -284,7 +284,7 @@
+                         metric="metric ${metric}"
+                     fi
+ 
+-                    ip -4 route replace "${target}/${prefix}" proto static via "${gateway}" dev "${interface}" ${metric} ${scope}
++                    ip -4 route replace "${target}/${prefix}" proto static via "${gateway}" dev "${interface}" "${metric}" "${scope}"
+ 
+                     if [ $? -ne 0 ]; then
+                         err "failed to create static route: ${target}/${prefix} via ${gateway} dev ${interface} ${metric}"
+@@ -315,7 +315,7 @@
+ 
+                     if [ -z "${router}" ] ||
+                        [ "${added_router}" = "1" ] ||
+-                       [ "$(IFS='.' ip2num ${router})" -le 0 ] ||
++                       [ "$(IFS='.' ip2num "${router}")" -le 0 ] ||
+                        [[ ( "${router}" = "${new_broadcast_address}" ) &&
+                           ( "${new_subnet_mask}" != "255.255.255.255" ) ]]; then
+                         continue
+@@ -369,14 +369,14 @@
+         # from the GMT offset, but the $ZONEINFO/Etc/GMT$offset file can be
+         # used - note: this disables DST.
+         ((z=new_time_offset/3600))
+-        ((hoursWest=$(printf '%+d' $z)))
++        ((hoursWest=$(printf '%+d' "$z")))
+ 
+         if (( $hoursWest < 0 )); then
+             # tzdata treats negative 'hours west' as positive 'gmtoff'!
+             ((hoursWest*=-1))
+         fi
+ 
+-        tzfile=/usr/share/zoneinfo/Etc/GMT$(printf '%+d' ${hoursWest})
++        tzfile=/usr/share/zoneinfo/Etc/GMT$(printf '%+d' "${hoursWest}")
+         if [ -e "${tzfile}" ]; then
+             cp -fp "${tzfile}" /etc/localtime
+             touch /etc/localtime
+@@ -608,7 +608,7 @@
+             ip -4 addr replace "${new_ip_address}/${new_prefix}" \
+                 broadcast "${new_broadcast_address}" dev "${interface}" \
+                 valid_lft "${new_dhcp_lease_time}" preferred_lft "${new_dhcp_lease_time}"
+-            set ${new_routers}
++            set "${new_routers}"
+ 
+             if ping -q -c 1 -w 10 -I "${interface}" "${1}"; then
+                 dhconfig
+

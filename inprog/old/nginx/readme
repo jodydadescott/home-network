@@ -1,0 +1,2 @@
+# Get Certs
+# /usr/bin/certbot certonly --nginx -d $CERTBOT_DOMAINS

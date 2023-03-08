@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker run -it --rm -v $PWD/named.conf:/etc/named.conf:ro internetsystemsconsortium/bind9:9.18 bash
+# docker run -it --rm internetsystemsconsortium/bind9:9.18 bash
